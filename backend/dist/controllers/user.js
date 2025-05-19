@@ -55,8 +55,9 @@ const signUp = async (req, res) => {
         const hashPassword = await bcrypt_1.default.hash(password, 10);
         const newUser = await db_1.pool.query(`INSERT INTO users (email, name, password)
 			VALUES ($1, $2, $3) RETURNING email, name, password`, [email, name, hashPassword]);
+        const user = newUser.rows[0];
         s.user = { success: true };
-        res.status(201).json({ data: newUser.rows[0] });
+        res.status(201).json({ data: { email: user.email } });
     }
     catch (e) {
         console.log("Sign up error");

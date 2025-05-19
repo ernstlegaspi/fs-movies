@@ -71,9 +71,10 @@ export const signUp: RequestHandler = async (req: Request, res: Response) => {
 			[email, name, hashPassword]
 		)
 
+		const user: TSignInUser = newUser.rows[0]
 		s.user = { success: true }
 
-		res.status(201).json({ data: newUser.rows[0] })
+		res.status(201).json({ data: { email: user.email } })
 	}
 	catch(e) {
 		console.log("Sign up error")
