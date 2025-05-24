@@ -26,9 +26,34 @@ export const createUserTable = async () => {
 	}
 }
 
-export const dropTable = async () => {
+export const createMovieTable = async () => {
 	try {
-		await pool.query(`DROP TABLE IF EXISTS users`)
+		await pool.query(`
+			CREATE TABLE IF NOT EXISTS movies (
+				id SERIAL PRIMARY KEY,
+				created_at TIMESTAMP DEFAULT NOW(),
+				updated_at TIMESTAMP DEFAULT NOW(),
+				description TEXT NOT NULL,
+				title TEXT NOT NULL,
+				genres TEXT[] NOT NULL,
+				release_date DATE NOT NULL,
+				duration INTEGER NOT NULL,
+				slug TEXT NOT NULL
+			)
+		`)
+	} catch(e) {
+		throw new Error("Error creating movie table.")
+	}
+}
+
+export const dropTables = async () => {
+	try {
+		await Promise.all([
+			pool.query(`DROP TABLE IF EXISTS users`),
+			pool.query(`DROP TABLE IF EXISTS movies`)
+		])
+
+		console.log("Tables dropped")
 	} catch(e) {
 		throw new Error("Cannot drop table")
 	}
