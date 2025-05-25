@@ -1,7 +1,10 @@
+import type { RedisClientType } from "redis"
+
 import { Response, Request, RequestHandler } from "express"
 import { TMovie } from "../types/movie"
 import { movieSchema } from "../zod/zod"
 import { pool } from "../db"
+import { initClient } from "../lib/redis"
 
 export const addMovie: RequestHandler = async (req: Request, res: Response) => {
 	try {
@@ -49,9 +52,21 @@ export const addMovie: RequestHandler = async (req: Request, res: Response) => {
 
 export const getMovies: RequestHandler = async (req: Request, res: Response) => {
 	try {
-		const movies = await pool.query(`SELECT * FROM movies ORDER BY created_at DESC`)
+		const redis: RedisClientType = await initClient()
+		const key = "movies:all"
 
-		res.status(200).json({ result: movies.rows })
+		const result = await redis.get(key)
+
+		if(result) {
+			res.status(200).json({ cached: true, result: JSON.parse(result) })
+			return
+		}
+		
+		const { rows } = await pool.query(`SELECT * FROM movies ORDER BY created_at DESC`)
+
+		await redis.set(key, JSON.stringify(rows), { EX: 120 })
+
+		res.status(200).json({ cached: false, result: rows })
 	} catch(e) {
 		console.error(e)
 		res.status(500).json({ message: "Internal Server Error" })
@@ -61,6 +76,15 @@ export const getMovies: RequestHandler = async (req: Request, res: Response) => 
 export const getMovieByTitle: RequestHandler = async (req: Request, res: Response) => {
 	try {
 		const { slug } = req.params
+		const redis: RedisClientType = await initClient()
+		const key = `movie:${slug}`
+
+		const result = await redis.get(key)
+
+		if(result) {
+			res.status(200).json({ cached: true, result: JSON.parse(result) })
+			return
+		}
 
 		const { rows } = await pool.query(`SELECT * FROM movies where slug = $1`, [slug])
 
@@ -69,7 +93,9 @@ export const getMovieByTitle: RequestHandler = async (req: Request, res: Respons
 			return
 		}
 
-		res.status(200).json({ result: rows[0] })
+		await redis.set(key, JSON.stringify(rows[0]), { EX: 120 });
+
+		res.status(200).json({ cached: false, result: rows[0] })
 	} catch(e) {
 		console.error(e)
 		res.status(500).json({ message: "Internal Server Error" })
@@ -81,6 +107,7 @@ export const updateMovieById: RequestHandler = async (req: Request, res: Respons
 		const { id, releaseDate, description, title, genres, duration }: TMovie = req.body
 		const slug = title.toLowerCase().replace(" ", "-").trim()
 		const result = movieSchema.safeParse({ description, duration, genres, releaseDate, slug, title })
+		const redis: RedisClientType = await initClient()
 
 		if(result.error) {
 			const err = result.error.flatten().fieldErrors
@@ -113,6 +140,8 @@ export const updateMovieById: RequestHandler = async (req: Request, res: Respons
 			`,
 			[description, duration, genres, releaseDate, slug, title, id]
 		)
+
+		await redis.del(`movie:${slug}`)
 
 		res.status(200).json({ message: updatedMovie.rows })
 	} catch(e) {

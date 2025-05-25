@@ -16,7 +16,11 @@ export const initClient = async () => {
 			console.error("Failed to connect Redis client:", e)
 			throw e
 		}
+
+		console.log("if")
 	}
+
+	console.log("else")
 
 	return client
 }

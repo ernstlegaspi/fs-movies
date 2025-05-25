@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateMovieById = exports.getMovieByTitle = exports.getMovies = exports.addMovie = void 0;
 const zod_1 = require("../zod/zod");
 const db_1 = require("../db");
+const redis_1 = require("../lib/redis");
 const addMovie = async (req, res) => {
     try {
         const { description, duration, genres, releaseDate, title } = req.body;
@@ -37,8 +38,16 @@ const addMovie = async (req, res) => {
 exports.addMovie = addMovie;
 const getMovies = async (req, res) => {
     try {
-        const movies = await db_1.pool.query(`SELECT * FROM movies ORDER BY created_at DESC`);
-        res.status(200).json({ result: movies.rows });
+        const redis = await (0, redis_1.initClient)();
+        const key = "movies:all";
+        const isCached = await redis.get(key);
+        if (isCached) {
+            res.status(200).json({ result: JSON.parse(isCached), cached: true });
+            return;
+        }
+        const { rows } = await db_1.pool.query(`SELECT * FROM movies ORDER BY created_at DESC`);
+        await redis.set(key, JSON.stringify(rows), { EX: 120 });
+        res.status(200).json({ result: rows, cached: false });
     }
     catch (e) {
         console.error(e);
