@@ -8,4 +8,3 @@ export type TSignUpUser = {
 	name: string
 	password: string
 }
-

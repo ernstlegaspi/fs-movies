@@ -1,11 +1,15 @@
 import { Router } from "express"
 
 import { sessionMiddleware } from "../middleware"
-import { addMovie, getMovies } from "../controllers/movie"
+import { addMovie, getMovieByTitle, getMovies, updateMovieById } from "../controllers/movie"
 
 const router = Router()
 
-router.post("/movie", sessionMiddleware, addMovie)
-router.get("/movies", getMovies)
+router.get("/:slug", getMovieByTitle)
+router.get("/", getMovies)
+
+router.post("/", sessionMiddleware, addMovie)
+
+router.put("/", sessionMiddleware, updateMovieById)
 
 export default router

@@ -34,7 +34,7 @@ export const createMovieTable = async () => {
 				created_at TIMESTAMP DEFAULT NOW(),
 				updated_at TIMESTAMP DEFAULT NOW(),
 				description TEXT NOT NULL,
-				title TEXT NOT NULL,
+				title TEXT NOT NULL UNIQUE,
 				genres TEXT[] NOT NULL,
 				release_date DATE NOT NULL,
 				duration INTEGER NOT NULL,
