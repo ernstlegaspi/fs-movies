@@ -149,3 +149,27 @@ export const updateMovieById: RequestHandler = async (req: Request, res: Respons
 		res.status(500).json({ message: "Internal Server Error" })
 	}
 }
+
+export const deleteMovieById: RequestHandler = async (req: Request, res: Response) => {
+	try {
+		const { id, slug } = req.params
+		const redis = await initClient()
+
+		const { rows } = await pool.query(
+			`DELETE FROM movies where id = $1 RETURNING *`,
+			[id]
+		)
+
+		if(rows.length === 0) {
+			res.status(404).json({ message: "Movie not found" })
+			return
+		}
+
+		await redis.del(`movie:${slug}`)
+
+		res.status(200).json({ result: "Movie Deleted" })
+	} catch(e) {
+		console.error(e)
+		res.status(500).json({ message: "Internal Server Error" })
+	}
+}

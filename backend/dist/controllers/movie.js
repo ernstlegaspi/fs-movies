@@ -40,14 +40,14 @@ const getMovies = async (req, res) => {
     try {
         const redis = await (0, redis_1.initClient)();
         const key = "movies:all";
-        const isCached = await redis.get(key);
-        if (isCached) {
-            res.status(200).json({ result: JSON.parse(isCached), cached: true });
+        const result = await redis.get(key);
+        if (result) {
+            res.status(200).json({ cached: true, result: JSON.parse(result) });
             return;
         }
         const { rows } = await db_1.pool.query(`SELECT * FROM movies ORDER BY created_at DESC`);
         await redis.set(key, JSON.stringify(rows), { EX: 120 });
-        res.status(200).json({ result: rows, cached: false });
+        res.status(200).json({ cached: false, result: rows });
     }
     catch (e) {
         console.error(e);
@@ -58,12 +58,20 @@ exports.getMovies = getMovies;
 const getMovieByTitle = async (req, res) => {
     try {
         const { slug } = req.params;
+        const redis = await (0, redis_1.initClient)();
+        const key = `movie:${slug}`;
+        const result = await redis.get(key);
+        if (result) {
+            res.status(200).json({ cached: true, result: JSON.parse(result) });
+            return;
+        }
         const { rows } = await db_1.pool.query(`SELECT * FROM movies where slug = $1`, [slug]);
         if (rows.length === 0) {
             res.status(404).json({ message: "Movie not found" });
             return;
         }
-        res.status(200).json({ result: rows[0] });
+        await redis.set(key, JSON.stringify(rows[0]), { EX: 120 });
+        res.status(200).json({ cached: false, result: rows[0] });
     }
     catch (e) {
         console.error(e);
@@ -76,6 +84,7 @@ const updateMovieById = async (req, res) => {
         const { id, releaseDate, description, title, genres, duration } = req.body;
         const slug = title.toLowerCase().replace(" ", "-").trim();
         const result = zod_1.movieSchema.safeParse({ description, duration, genres, releaseDate, slug, title });
+        const redis = await (0, redis_1.initClient)();
         if (result.error) {
             const err = result.error.flatten().fieldErrors;
             res.status(400).json({
@@ -96,6 +105,7 @@ const updateMovieById = async (req, res) => {
 				WHERE id = $7
 				RETURNING *
 			`, [description, duration, genres, releaseDate, slug, title, id]);
+        await redis.del(`movie:${slug}`);
         res.status(200).json({ message: updatedMovie.rows });
     }
     catch (e) {
