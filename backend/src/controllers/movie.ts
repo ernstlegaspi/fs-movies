@@ -9,8 +9,17 @@ import { initClient } from "../lib/redis"
 export const addMovie: RequestHandler = async (req: Request, res: Response) => {
 	try {
 		const { description, duration, genres, releaseDate, title }: TMovie = req.body
-		const slug = title.toLowerCase().replace(" ", "-").trim()
-		const result = movieSchema.safeParse({ description, duration, genres, releaseDate, slug, title })
+		const slug = title.toLowerCase().replaceAll(" ", "-").trim()
+		const modifiedGenres = genres.map(v => v.toLowerCase())
+		
+		const result = movieSchema.safeParse({
+			description,
+			duration,
+			genres: modifiedGenres,
+			releaseDate,
+			slug,
+			title
+		})
 
 		if(result.error) {
 			const err = result.error.flatten().fieldErrors
@@ -40,7 +49,7 @@ export const addMovie: RequestHandler = async (req: Request, res: Response) => {
 				VALUES ($1, $2, $3, $4, $5, $6)
 				RETURNING *
 			`,
-			[description, duration, genres, releaseDate, slug, title]
+			[description, duration, modifiedGenres, releaseDate, slug, title]
 		)
 
 		res.status(201).json({ result: newMovie.rows[0] })
@@ -143,7 +152,7 @@ export const updateMovieById: RequestHandler = async (req: Request, res: Respons
 
 		await redis.del(`movie:${slug}`)
 
-		res.status(200).json({ message: updatedMovie.rows })
+		res.status(200).json({ result: updatedMovie.rows })
 	} catch(e) {
 		console.error(e)
 		res.status(500).json({ message: "Internal Server Error" })
@@ -170,6 +179,25 @@ export const deleteMovieById: RequestHandler = async (req: Request, res: Respons
 		res.status(200).json({ result: "Movie Deleted" })
 	} catch(e) {
 		console.error(e)
+		res.status(500).json({ message: "Internal Server Error" })
+	}
+}
+
+export const getMoviesByGenres: RequestHandler = async (req: Request, res: Response) => {
+	try {
+		const { genres } = req.params
+		const genresArr = genres.split("-")
+
+		const { rows } = await pool.query(
+			`SELECT * FROM movies WHERE genres && $1::TEXT[] ORDER BY created_at DESC`,
+			[genresArr]
+		)
+
+		console.log(rows)
+
+		res.status(200).json({ result: rows })
+	} catch(e) {
+		console.log(e)
 		res.status(500).json({ message: "Internal Server Error" })
 	}
 }

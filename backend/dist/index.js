@@ -61,8 +61,8 @@ const lib_1 = require("./lib/lib");
         (0, db_1.createUserTable)(),
         (0, db_1.createMovieTable)()
     ]);
-    app.use("/api/user", (0, lib_1.rateLimiter)(5, 15 * 60 * 1000), user_1.default);
-    app.use("/api/movie", (0, lib_1.rateLimiter)(5, 15 * 60 * 1000), movie_1.default);
+    app.use("/api/user", (0, lib_1.rateLimiter)(51, 15 * 60 * 1000), user_1.default);
+    app.use("/api/movie", (0, lib_1.rateLimiter)(51, 15 * 60 * 1000), movie_1.default);
     app.use("/api/init", init_1.default);
     const PORT = process.env.PORT || 2217;
     app.listen(PORT, () => console.log(`Server is running in porttt: ${PORT}`));

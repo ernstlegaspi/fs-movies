@@ -68,8 +68,8 @@ import { rateLimiter } from "./lib/lib"
 		createMovieTable()
 	])
 	
-	app.use("/api/user", rateLimiter(5, 15 * 60 * 1000), userRoutes)
-	app.use("/api/movie", rateLimiter(5, 15 * 60 * 1000), movieRoutes)
+	app.use("/api/user", rateLimiter(51, 15 * 60 * 1000), userRoutes)
+	app.use("/api/movie", rateLimiter(51, 15 * 60 * 1000), movieRoutes)
 	app.use("/api/init", initCSRF)
 	
 	const PORT = process.env.PORT || 2217

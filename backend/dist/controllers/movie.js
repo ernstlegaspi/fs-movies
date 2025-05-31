@@ -1,14 +1,22 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateMovieById = exports.getMovieByTitle = exports.getMovies = exports.addMovie = void 0;
+exports.getMoviesByGenres = exports.deleteMovieById = exports.updateMovieById = exports.getMovieByTitle = exports.getMovies = exports.addMovie = void 0;
 const zod_1 = require("../zod/zod");
 const db_1 = require("../db");
 const redis_1 = require("../lib/redis");
 const addMovie = async (req, res) => {
     try {
         const { description, duration, genres, releaseDate, title } = req.body;
-        const slug = title.toLowerCase().replace(" ", "-").trim();
-        const result = zod_1.movieSchema.safeParse({ description, duration, genres, releaseDate, slug, title });
+        const slug = title.toLowerCase().replaceAll(" ", "-").trim();
+        const modifiedGenres = genres.map(v => v.toLowerCase());
+        const result = zod_1.movieSchema.safeParse({
+            description,
+            duration,
+            genres: modifiedGenres,
+            releaseDate,
+            slug,
+            title
+        });
         if (result.error) {
             const err = result.error.flatten().fieldErrors;
             res.status(400).json({
@@ -27,7 +35,7 @@ const addMovie = async (req, res) => {
 				INSERT INTO movies (description, duration, genres, release_date, slug, title)
 				VALUES ($1, $2, $3, $4, $5, $6)
 				RETURNING *
-			`, [description, duration, genres, releaseDate, slug, title]);
+			`, [description, duration, modifiedGenres, releaseDate, slug, title]);
         res.status(201).json({ result: newMovie.rows[0] });
     }
     catch (e) {
@@ -106,7 +114,7 @@ const updateMovieById = async (req, res) => {
 				RETURNING *
 			`, [description, duration, genres, releaseDate, slug, title, id]);
         await redis.del(`movie:${slug}`);
-        res.status(200).json({ message: updatedMovie.rows });
+        res.status(200).json({ result: updatedMovie.rows });
     }
     catch (e) {
         console.error(e);
@@ -114,3 +122,35 @@ const updateMovieById = async (req, res) => {
     }
 };
 exports.updateMovieById = updateMovieById;
+const deleteMovieById = async (req, res) => {
+    try {
+        const { id, slug } = req.params;
+        const redis = await (0, redis_1.initClient)();
+        const { rows } = await db_1.pool.query(`DELETE FROM movies where id = $1 RETURNING *`, [id]);
+        if (rows.length === 0) {
+            res.status(404).json({ message: "Movie not found" });
+            return;
+        }
+        await redis.del(`movie:${slug}`);
+        res.status(200).json({ result: "Movie Deleted" });
+    }
+    catch (e) {
+        console.error(e);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+exports.deleteMovieById = deleteMovieById;
+const getMoviesByGenres = async (req, res) => {
+    try {
+        const { genres } = req.params;
+        const genresArr = genres.split("-");
+        const { rows } = await db_1.pool.query(`SELECT * FROM movies WHERE genres && $1::TEXT[] ORDER BY created_at DESC`, [genresArr]);
+        console.log(rows);
+        res.status(200).json({ result: rows });
+    }
+    catch (e) {
+        console.log(e);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+exports.getMoviesByGenres = getMoviesByGenres;
