@@ -6,6 +6,14 @@ import { movieSchema } from "../zod/zod"
 import { pool } from "../db"
 import { initClient } from "../lib/redis"
 
+/*
+ GET
+ recent movie
+ top rated
+ movie recommendations
+
+*/
+
 export const addMovie: RequestHandler = async (req: Request, res: Response) => {
 	try {
 		const { description, duration, genres, releaseDate, title }: TMovie = req.body
@@ -193,11 +201,31 @@ export const getMoviesByGenres: RequestHandler = async (req: Request, res: Respo
 			[genresArr]
 		)
 
-		console.log(rows)
-
 		res.status(200).json({ result: rows })
 	} catch(e) {
 		console.log(e)
 		res.status(500).json({ message: "Internal Server Error" })
+	}
+}
+
+export const getRecentMovies: RequestHandler = async (req: Request, res: Response) => {
+	try {
+		const redis: RedisClientType = await initClient()
+		const key = "movie:recent"
+
+		const result = await redis.get(key)
+
+		if(result) {
+			res.status(200).json({ cached: true, result: JSON.parse(result) })
+			return
+		}
+
+		const { rows } = await pool.query("SELECT * FROM movies ORDER BY CREATED_AT DESC LIMIT 10")
+
+		await redis.set(key, JSON.stringify(rows), { EX: 120 })
+
+		res.status(200).json({ cached: false, result: rows })
+	} catch(e) {
+		res.status(500).json({ message: "Internal Server ERror" })
 	}
 }

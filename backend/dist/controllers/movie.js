@@ -1,9 +1,16 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getMoviesByGenres = exports.deleteMovieById = exports.updateMovieById = exports.getMovieByTitle = exports.getMovies = exports.addMovie = void 0;
+exports.getRecentMovies = exports.getMoviesByGenres = exports.deleteMovieById = exports.updateMovieById = exports.getMovieByTitle = exports.getMovies = exports.addMovie = void 0;
 const zod_1 = require("../zod/zod");
 const db_1 = require("../db");
 const redis_1 = require("../lib/redis");
+/*
+ GET
+ recent movie
+ top rated
+ movie recommendations
+
+*/
 const addMovie = async (req, res) => {
     try {
         const { description, duration, genres, releaseDate, title } = req.body;
@@ -145,7 +152,6 @@ const getMoviesByGenres = async (req, res) => {
         const { genres } = req.params;
         const genresArr = genres.split("-");
         const { rows } = await db_1.pool.query(`SELECT * FROM movies WHERE genres && $1::TEXT[] ORDER BY created_at DESC`, [genresArr]);
-        console.log(rows);
         res.status(200).json({ result: rows });
     }
     catch (e) {
@@ -154,3 +160,21 @@ const getMoviesByGenres = async (req, res) => {
     }
 };
 exports.getMoviesByGenres = getMoviesByGenres;
+const getRecentMovies = async (req, res) => {
+    try {
+        const redis = await (0, redis_1.initClient)();
+        const key = "movie:recent";
+        const result = await redis.get(key);
+        if (result) {
+            res.status(200).json({ cached: true, result: JSON.parse(result) });
+            return;
+        }
+        const { rows } = await db_1.pool.query("SELECT * FROM movies ORDER BY CREATED_AT DESC LIMIT 10");
+        await redis.set(key, JSON.stringify(rows), { EX: 120 });
+        res.status(200).json({ cached: false, result: rows });
+    }
+    catch (e) {
+        res.status(500).json({ message: "Internal Server ERror" });
+    }
+};
+exports.getRecentMovies = getRecentMovies;

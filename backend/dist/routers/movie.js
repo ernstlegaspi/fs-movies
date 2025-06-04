@@ -7,6 +7,7 @@ const router = (0, express_1.Router)();
 router.get("/:slug", movie_1.getMovieByTitle);
 router.get("/", movie_1.getMovies);
 router.get("/all/:genres", movie_1.getMoviesByGenres);
+router.get("/recent/v1", movie_1.getRecentMovies);
 router.delete("/:id/:slug", middleware_1.sessionMiddleware, movie_1.deleteMovieById);
 router.post("/", middleware_1.sessionMiddleware, movie_1.addMovie);
 router.put("/", middleware_1.sessionMiddleware, movie_1.updateMovieById);
