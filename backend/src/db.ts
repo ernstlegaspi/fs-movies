@@ -22,7 +22,24 @@ export const createUserTable = async () => {
 
 		console.log("user table created")
 	} catch(e) {
+		console.error(e)
 		throw new Error("Erorr creating user table.")
+	}
+}
+
+export const createRatingsTable = async () => {
+	try {
+		await pool.query(`
+			CREATE TABLE IF NOT EXISTS ratings (
+				id SERIAL PRIMARY KEY,
+				movie_id INTEGER REFERENCES movies(id) ON DELETE CASCADE,
+				score INTEGER NOT NULL CHECK (score >= 1 AND score <= 10),
+				created_at TIMESTAMP DEFAULT NOW()
+			)
+		`)
+	} catch(e) {
+		console.error(e)
+		throw new Error("Error creating ratings table.")
 	}
 }
 
@@ -31,17 +48,21 @@ export const createMovieTable = async () => {
 		await pool.query(`
 			CREATE TABLE IF NOT EXISTS movies (
 				id SERIAL PRIMARY KEY,
+				casts TEXT[],
 				created_at TIMESTAMP DEFAULT NOW(),
 				updated_at TIMESTAMP DEFAULT NOW(),
 				description TEXT NOT NULL,
 				title TEXT NOT NULL UNIQUE,
 				genres TEXT[] NOT NULL,
+				productions TEXT[],
 				release_date DATE NOT NULL,
 				duration INTEGER NOT NULL,
-				slug TEXT NOT NULL
+				slug TEXT NOT NULL,
+				tags TEXT[] NOT NULL
 			)
 		`)
 	} catch(e) {
+		console.error(e)
 		throw new Error("Error creating movie table.")
 	}
 }

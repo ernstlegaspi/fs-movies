@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.movieSchema = exports.signUpSchema = exports.signInSchema = void 0;
+exports.updateRatingSchema = exports.movieSchema = exports.signUpSchema = exports.signInSchema = void 0;
 const zod_1 = require("zod");
 exports.signInSchema = zod_1.z.object({
     email: zod_1.z.string({
@@ -32,4 +32,12 @@ exports.movieSchema = zod_1.z.object({
     releaseDate: zod_1.z.coerce.date(),
     slug: zod_1.z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Invalid slug format"),
     title: zod_1.z.string().min(1, "Title must be at least 1 character.")
+});
+exports.updateRatingSchema = zod_1.z.object({
+    ratingId: zod_1.z.number({
+        invalid_type_error: "Please enter a valid rating id."
+    }),
+    score: zod_1.z.number({
+        invalid_type_error: "Please enter a valid score."
+    })
 });

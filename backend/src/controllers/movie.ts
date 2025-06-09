@@ -6,14 +6,6 @@ import { movieSchema } from "../zod/zod"
 import { pool } from "../db"
 import { initClient } from "../lib/redis"
 
-/*
- GET
- recent movie
- top rated
- movie recommendations
-
-*/
-
 export const addMovie: RequestHandler = async (req: Request, res: Response) => {
 	try {
 		const { description, duration, genres, releaseDate, title }: TMovie = req.body
@@ -227,5 +219,20 @@ export const getRecentMovies: RequestHandler = async (req: Request, res: Respons
 		res.status(200).json({ cached: false, result: rows })
 	} catch(e) {
 		res.status(500).json({ message: "Internal Server ERror" })
+	}
+}
+
+export const getTopRatedMovies: RequestHandler = async (req: Request, res: Response) => {
+	try {
+		await pool.query(`
+			SELECT m.* AVG(r.score) AS average_rating
+			FROM movies m
+			JOIN ratings r ON m.id = r.movie_id
+			GROUP BY m.id
+			ORDER BY average_rating DESC
+			LIMIT 1
+		`)
+	} catch(e) {
+		res.status(500).json({ message: "Internal Server Error" })
 	}
 }

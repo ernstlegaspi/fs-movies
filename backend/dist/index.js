@@ -13,6 +13,7 @@ const express_session_1 = __importDefault(require("express-session"));
 const connect_redis_1 = require("connect-redis");
 const user_1 = __importDefault(require("./routers/user"));
 const movie_1 = __importDefault(require("./routers/movie"));
+const ratings_1 = __importDefault(require("./routers/ratings"));
 const init_1 = __importDefault(require("./routers/init"));
 const redis_1 = require("./lib/redis");
 const db_1 = require("./db");
@@ -59,10 +60,12 @@ const lib_1 = require("./lib/lib");
     await Promise.all([
         // dropTables()
         (0, db_1.createUserTable)(),
-        (0, db_1.createMovieTable)()
+        (0, db_1.createMovieTable)(),
+        (0, db_1.createRatingsTable)()
     ]);
     app.use("/api/user", (0, lib_1.rateLimiter)(51, 15 * 60 * 1000), user_1.default);
     app.use("/api/movie", (0, lib_1.rateLimiter)(51, 15 * 60 * 1000), movie_1.default);
+    app.use("/api/rating", (0, lib_1.rateLimiter)(51, 15 * 60 * 1000), ratings_1.default);
     app.use("/api/init", init_1.default);
     const PORT = process.env.PORT || 2217;
     app.listen(PORT, () => console.log(`Server is running in porttt: ${PORT}`));

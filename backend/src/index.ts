@@ -11,9 +11,11 @@ import { RedisStore } from "connect-redis"
 
 import userRoutes from "./routers/user"
 import movieRoutes from "./routers/movie"
+import ratingRoutes from "./routers/ratings"
 import initCSRF from "./routers/init"
+
 import { initClient } from "./lib/redis"
-import { createMovieTable, createUserTable, dropTables } from "./db"
+import { createMovieTable, createRatingsTable, createUserTable, dropTables } from "./db"
 import { rateLimiter } from "./lib/lib"
 
 (async () => {
@@ -65,11 +67,13 @@ import { rateLimiter } from "./lib/lib"
 	await Promise.all([
 		// dropTables()
 		createUserTable(),
-		createMovieTable()
+		createMovieTable(),
+		createRatingsTable()
 	])
 	
 	app.use("/api/user", rateLimiter(51, 15 * 60 * 1000), userRoutes)
 	app.use("/api/movie", rateLimiter(51, 15 * 60 * 1000), movieRoutes)
+	app.use("/api/rating", rateLimiter(51, 15 * 60 * 1000), ratingRoutes)
 	app.use("/api/init", initCSRF)
 	
 	const PORT = process.env.PORT || 2217

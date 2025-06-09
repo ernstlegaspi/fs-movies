@@ -1,12 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getRecentMovies = exports.getMoviesByGenres = exports.deleteMovieById = exports.updateMovieById = exports.getMovieByTitle = exports.getMovies = exports.addMovie = void 0;
+exports.getTopRatedMovies = exports.getRecentMovies = exports.getMoviesByGenres = exports.deleteMovieById = exports.updateMovieById = exports.getMovieByTitle = exports.getMovies = exports.addMovie = void 0;
 const zod_1 = require("../zod/zod");
 const db_1 = require("../db");
 const redis_1 = require("../lib/redis");
 /*
  GET
- recent movie
  top rated
  movie recommendations
 
@@ -178,3 +177,19 @@ const getRecentMovies = async (req, res) => {
     }
 };
 exports.getRecentMovies = getRecentMovies;
+const getTopRatedMovies = async (req, res) => {
+    try {
+        await db_1.pool.query(`
+			SELECT m.* AVG(r.score) AS average_rating
+			FROM movies m
+			JOIN ratings r ON m.id = r.movie_id
+			GROUP BY m.id
+			ORDER BY average_rating DESC
+			LIMIT 1
+		`);
+    }
+    catch (e) {
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+exports.getTopRatedMovies = getTopRatedMovies;

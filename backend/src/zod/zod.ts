@@ -36,3 +36,12 @@ export const movieSchema = z.object({
 	slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Invalid slug format"),
 	title: z.string().min(1, "Title must be at least 1 character.")
 })
+
+export const updateRatingSchema = z.object({
+	ratingId: z.number({
+		invalid_type_error: "Please enter a valid rating id."
+	}),
+	score: z.number({
+		invalid_type_error: "Please enter a valid score."
+	})
+})
