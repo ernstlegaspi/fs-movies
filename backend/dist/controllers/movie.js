@@ -4,15 +4,9 @@ exports.getTopRatedMovies = exports.getRecentMovies = exports.getMoviesByGenres 
 const zod_1 = require("../zod/zod");
 const db_1 = require("../db");
 const redis_1 = require("../lib/redis");
-/*
- GET
- top rated
- movie recommendations
-
-*/
 const addMovie = async (req, res) => {
     try {
-        const { description, duration, genres, releaseDate, title } = req.body;
+        const { description, duration, genres, ratings, releaseDate, title } = req.body;
         const slug = title.toLowerCase().replaceAll(" ", "-").trim();
         const modifiedGenres = genres.map(v => v.toLowerCase());
         const result = zod_1.movieSchema.safeParse({
@@ -42,7 +36,13 @@ const addMovie = async (req, res) => {
 				VALUES ($1, $2, $3, $4, $5, $6)
 				RETURNING *
 			`, [description, duration, modifiedGenres, releaseDate, slug, title]);
-        res.status(201).json({ result: newMovie.rows[0] });
+        const movie = newMovie.rows[0];
+        const rating = await db_1.pool.query(`
+				INSERT INTO ratings (movie_id, score)
+				VALUES ($1, $2)
+				RETURNING *
+			`, [movie.id, ratings || ratings > 0 ? ratings : 0]);
+        res.status(201).json({ result: movie, ratings: rating.rows[0] });
     }
     catch (e) {
         console.error(e);
@@ -84,8 +84,13 @@ const getMovieByTitle = async (req, res) => {
             res.status(404).json({ message: "Movie not found" });
             return;
         }
-        await redis.set(key, JSON.stringify(rows[0]), { EX: 120 });
-        res.status(200).json({ cached: false, result: rows[0] });
+        const ratings = await db_1.pool.query(`SELECT * FROM ratings WHERE movie_id = $1`, [rows[0].id]);
+        const val = {
+            movies: rows[0],
+            ratings: ratings.rows[0]
+        };
+        await redis.set(key, JSON.stringify(val), { EX: 120 });
+        res.status(200).json({ cached: false, result: val });
     }
     catch (e) {
         console.error(e);

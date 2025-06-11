@@ -7,4 +7,5 @@ export type TMovie = {
 	title: string
 	genres: string[]
 	duration: number
+	ratings: number
 }

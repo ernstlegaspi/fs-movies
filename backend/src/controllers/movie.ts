@@ -8,7 +8,7 @@ import { initClient } from "../lib/redis"
 
 export const addMovie: RequestHandler = async (req: Request, res: Response) => {
 	try {
-		const { description, duration, genres, releaseDate, title }: TMovie = req.body
+		const { description, duration, genres, ratings, releaseDate, title }: TMovie = req.body
 		const slug = title.toLowerCase().replaceAll(" ", "-").trim()
 		const modifiedGenres = genres.map(v => v.toLowerCase())
 		
@@ -52,7 +52,18 @@ export const addMovie: RequestHandler = async (req: Request, res: Response) => {
 			[description, duration, modifiedGenres, releaseDate, slug, title]
 		)
 
-		res.status(201).json({ result: newMovie.rows[0] })
+		const movie = newMovie.rows[0]
+
+		const rating = await pool.query(
+			`
+				INSERT INTO ratings (movie_id, score)
+				VALUES ($1, $2)
+				RETURNING *
+			`,
+			[movie.id, ratings || ratings > 0 ? ratings : 0]
+		)
+
+		res.status(201).json({ result: movie, ratings: rating.rows[0] })
 	} catch(e) {
 		console.error(e)
 		res.status(500).json({ message: "Internal Server Error" })
@@ -102,9 +113,19 @@ export const getMovieByTitle: RequestHandler = async (req: Request, res: Respons
 			return
 		}
 
-		await redis.set(key, JSON.stringify(rows[0]), { EX: 120 });
+		const ratings = await pool.query(
+			`SELECT * FROM ratings WHERE movie_id = $1`,
+			[rows[0].id]
+		)
 
-		res.status(200).json({ cached: false, result: rows[0] })
+		const val = {
+			movies: rows[0],
+			ratings: ratings.rows[0]
+		}
+
+		await redis.set(key, JSON.stringify(val), { EX: 120 });
+
+		res.status(200).json({ cached: false, result: val })
 	} catch(e) {
 		console.error(e)
 		res.status(500).json({ message: "Internal Server Error" })
@@ -219,20 +240,5 @@ export const getRecentMovies: RequestHandler = async (req: Request, res: Respons
 		res.status(200).json({ cached: false, result: rows })
 	} catch(e) {
 		res.status(500).json({ message: "Internal Server ERror" })
-	}
-}
-
-export const getTopRatedMovies: RequestHandler = async (req: Request, res: Response) => {
-	try {
-		await pool.query(`
-			SELECT m.* AVG(r.score) AS average_rating
-			FROM movies m
-			JOIN ratings r ON m.id = r.movie_id
-			GROUP BY m.id
-			ORDER BY average_rating DESC
-			LIMIT 1
-		`)
-	} catch(e) {
-		res.status(500).json({ message: "Internal Server Error" })
 	}
 }

@@ -35,7 +35,7 @@ const createRatingsTable = async () => {
 			CREATE TABLE IF NOT EXISTS ratings (
 				id SERIAL PRIMARY KEY,
 				movie_id INTEGER REFERENCES movies(id) ON DELETE CASCADE,
-				score INTEGER NOT NULL CHECK (score >= 1 AND score <= 10),
+				score INTEGER NOT NULL CHECK (score > -1 AND score <= 10),
 				created_at TIMESTAMP DEFAULT NOW()
 			)
 		`);
@@ -60,8 +60,7 @@ const createMovieTable = async () => {
 				productions TEXT[],
 				release_date DATE NOT NULL,
 				duration INTEGER NOT NULL,
-				slug TEXT NOT NULL,
-				tags TEXT[] NOT NULL
+				slug TEXT NOT NULL
 			)
 		`);
     }
@@ -75,11 +74,13 @@ const dropTables = async () => {
     try {
         await Promise.all([
             exports.pool.query(`DROP TABLE IF EXISTS users`),
-            exports.pool.query(`DROP TABLE IF EXISTS movies`)
+            exports.pool.query(`DROP TABLE IF EXISTS movies`),
+            exports.pool.query(`DROP TABLE IF EXISTS ratings CASCADE`)
         ]);
         console.log("Tables dropped");
     }
     catch (e) {
+        console.error(e);
         throw new Error("Cannot drop table");
     }
 };
